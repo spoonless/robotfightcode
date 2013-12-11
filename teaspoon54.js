@@ -5,10 +5,11 @@ var Robot = function(robot) {
   this.mode = "";
   this.movement = 0;
   this.lastScannedRobot = null;
+  this.targetOrientation = 1;
+  this.scanningAngle = 15;
 };
 
-Robot.prototype.onIdle = function(ev) {
-  var robot = ev.robot;
+Robot.prototype.findTarget = function(robot) {
   if (this.lastScannedRobot != null) {
     var angle = (360 - findRotation(robot.position, this.lastScannedRobot.position)) % 360;
     var rotation = angle - robot.angle;
@@ -18,18 +19,30 @@ Robot.prototype.onIdle = function(ev) {
       rotation = 90 - rotation;
       this.movement = - this.movement;
     }
-    robot.turn(angle - robot.angle);
+    if (rotation != 0) {
+        this.targetOrientation = rotation > 0 ? 1 : -1;
+    }
+    robot.turn(rotation);
+    this.lastScannedRobot = null
+    return true;
+  }
+  return false;
+}
+
+Robot.prototype.onIdle = function(ev) {
+  var robot = ev.robot;
+  if (this.findTarget(robot)) {
     robot.fire(); // YAY! 
     this.mode = "berserk";
-    this.lastScannedRobot = null
   }
   else if (this.mode != "berserk") {
     this.movement = 0
     robot.disappear();
-    robot.turn(15);
+    this.scanningAngle = Math.max(this.scanningAngle + 2, 15);
+    robot.turn(this.targetOrientation * this.scanningAngle);
   }
   else {
-    this.movement = this.movement + (this.movement > 0? -1 : 1);
+    this.movement = this.movement + (this.movement > 0 ? -1 : 1);
     if (this.movement == 0) {
       this.mode = "";
     }
@@ -57,7 +70,8 @@ Robot.prototype.onScannedRobot = function(ev) {
   var robot = ev.robot;
   var scannedRobot = ev.scannedRobot;
   if (! scannedRobot.parentId) {
-    this.lastScannedRobot = scannedRobot
+    this.lastScannedRobot = scannedRobot;
+    this.scanningAngle = 0;
   }
 
 };
