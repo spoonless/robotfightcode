@@ -4,6 +4,7 @@
 var Robot = function(robot) {
   this.scannedRobot = null;
   this.counter = 0
+  this.direction = 1
 }
 
 Robot.prototype.onIdle = function(ev) {
@@ -11,18 +12,16 @@ Robot.prototype.onIdle = function(ev) {
   var arenaCenter = {"x":robot.arenaWidth/2, "y" :robot.arenaHeight/2}
   if (! this.scannedRobot) {
     this.orient(robot, arenaCenter);
-    robot.move(8);
-    robot.rotateCannon(5);
+    robot.move(10, this.direction);
+    robot.rotateCannon(15);
   }
   else {
+    var distance = getDistance(robot.position, this.scannedRobot.position)
+    this.orient(robot, this.scannedRobot.position, distance < 150 ? 90 : 0)
+    robot.move(1, this.direction);
     if (this.lock(robot, this.scannedRobot.position)) {
       robot.fire();
     }
-    var distance = getDistance(robot.position, this.scannedRobot.position)
-
-    if (this.orient(robot, this.scannedRobot.position, distance < 150 ? 90 : 0)) {
-    }
-    robot.move(1);
     this.counter--
     if (this.counter == 0)
         this.scannedRobot = null;
@@ -30,7 +29,7 @@ Robot.prototype.onIdle = function(ev) {
 }
 
 Robot.prototype.onWallCollision = function(ev) {
-
+  this.direction = -this.direction;
 };
 
 Robot.prototype.onScannedRobot = function(ev) {
@@ -50,7 +49,7 @@ function getDistance (p1, p2) {
   return Math.sqrt((dx*dx) + (dy*dy));
 }
 
-function getAngleIncrement(currentAngle, targetAngle) {
+function getAngleIncrement(currentAngle, targetAngle, maxIncrement) {
   var diffAngle = (targetAngle - currentAngle) % 360;
   if (Math.abs(diffAngle) > 1) {
     var rotation = 1;
@@ -64,6 +63,17 @@ function getAngleIncrement(currentAngle, targetAngle) {
   }
   return 0;
 }
+
+Robot.prototype.onRobotCollision = function(ev) {
+  this.scannedRobot = ev.collidedRobot;
+};
+
+Robot.prototype.onHitByBullet = function(ev) {
+    var robot = ev.robot;
+    robot.disappear();
+    robot.rotateCannon(robot.cannonRelativeAngle + ev.bearing);
+};
+
 
 Robot.prototype.orient = function(robot, position, angle) {
   angle = angle ? angle : 0;
